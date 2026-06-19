@@ -6,12 +6,12 @@
  *
  * 분석 기준:
  *  - "당월" 데이터 = 가장 최근 월의 레코드 (전월 대비 인사이트용)
- *  - KPI, 일별, 상품별, 주차별 집계는 당월 기준
+ *  - KPI, 일별, 상품별 집계는 당월 기준
  *  - fileKpis는 업로드된 파일별로 전체 기간 합산
  */
 
 import { SalesRecord } from "./database";
-import { format, getWeek, startOfWeek, endOfWeek, parseISO } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { ko } from "date-fns/locale";
 
 /** KPI 4종 (KpiCards 컴포넌트와 1:1 대응) */
@@ -37,21 +37,13 @@ export type ProductData = {
   percentage: number; // 전체 매출 대비 % (소수 1자리)
 };
 
-/** 주차별 매출 (인사이트 peakWeek 계산용) */
-export type WeeklyData = {
-  week: string;      // "6월 24주차" 같은 라벨
-  amount: number;
-  startDate: string;
-  endDate: string;
-};
-
 /** InsightPanel에 표시할 문장들 (이미 포맷된 문자열) */
 export type InsightComment = {
   momChange: string;
   topProduct: string;
   topProductShare: string;
-  peakWeek: string;
-  peakWeekAmount: string;
+  peakDate: string;
+  peakDateAmount: string;
   avgDailySales: string;
 };
 
@@ -60,7 +52,6 @@ export type AnalysisResult = {
   kpi: KpiData;
   daily: DailyData[];
   products: ProductData[];
-  weekly: WeeklyData[];
   insights: InsightComment;
   fileKpis: Record<string, KpiData>; // key = 파일명
 };
@@ -111,13 +102,12 @@ export function analyze(records: SalesRecord[]): AnalysisResult {
       kpi: empty,
       daily: [],
       products: [],
-      weekly: [],
       insights: {
         momChange: "데이터 없음",
         topProduct: "-",
         topProductShare: "-",
-        peakWeek: "-",
-        peakWeekAmount: "-",
+        peakDate: "-",
+        peakDateAmount: "-",
         avgDailySales: "-",
       },
       fileKpis: {},
@@ -168,25 +158,6 @@ export function analyze(records: SalesRecord[]): AnalysisResult {
     }))
     .sort((a, b) => b.amount - a.amount);
 
-  // ── 주차별: 월요일 시작 주(weekStartsOn: 1) 기준 ──
-  const weekMap = new Map<string, WeeklyData>();
-  workingRecords.forEach((r) => {
-    const date = parseISO(r.date);
-    const weekNum = getWeek(date, { locale: ko });
-    const start = startOfWeek(date, { weekStartsOn: 1 });
-    const end = endOfWeek(date, { weekStartsOn: 1 });
-    const key = format(start, "yyyy-MM-dd");
-    const label = `${format(date, "M")}월 ${weekNum}주차`;
-    const existing = weekMap.get(key) ?? {
-      week: label,
-      amount: 0,
-      startDate: format(start, "MM/dd"),
-      endDate: format(end, "MM/dd"),
-    };
-    weekMap.set(key, { ...existing, amount: existing.amount + r.amount });
-  });
-  const weekly = [...weekMap.values()].sort((a, b) => a.startDate.localeCompare(b.startDate));
-
   // ── 인사이트 문장 생성 (UI에 바로 표시) ──
   const momChange =
     previous.length > 0 && prevKpi.totalAmount > 0
@@ -194,9 +165,9 @@ export function analyze(records: SalesRecord[]): AnalysisResult {
       : "전월 데이터 없음";
 
   const topProduct = products[0];
-  const peakWeek = weekly.reduce(
-    (max, w) => (w.amount > max.amount ? w : max),
-    weekly[0] ?? { week: "-", amount: 0, startDate: "", endDate: "" }
+  const peakDay = daily.reduce(
+    (max, d) => (d.amount > max.amount ? d : max),
+    daily[0] ?? { date: "", amount: 0, quantity: 0 }
   );
   const avgDailySales = daily.length > 0 ? Math.round(kpi.totalAmount / daily.length) : 0;
 
@@ -204,13 +175,14 @@ export function analyze(records: SalesRecord[]): AnalysisResult {
     kpi,
     daily,
     products,
-    weekly,
     insights: {
       momChange,
       topProduct: topProduct?.product ?? "-",
       topProductShare: topProduct ? `전체 매출의 ${topProduct.percentage}%` : "-",
-      peakWeek: peakWeek?.week ?? "-",
-      peakWeekAmount: peakWeek ? `${peakWeek.amount.toLocaleString()}원` : "-",
+      peakDate: peakDay.date
+        ? format(parseISO(peakDay.date), "M월 d일", { locale: ko })
+        : "-",
+      peakDateAmount: peakDay.amount > 0 ? `${peakDay.amount.toLocaleString()}원` : "-",
       avgDailySales: `일평균 ${avgDailySales.toLocaleString()}원`,
     },
     fileKpis,
