@@ -20,20 +20,32 @@ type UploadState = "idle" | "saving" | "done" | "error";
 export default function HomePage() {
   const router = useRouter();
   const [state, setState] = useState<UploadState>("idle");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [validatedRows, setValidatedRows] = useState<ParsedRow[] | null>(null);
   const [fileNames, setFileNames] = useState<string[]>([]);
+
+  const goToDashboard = (sessionId = "local") => {
+    if (!validatedRows) return;
+    sessionStorage.setItem(
+      "dashboardData",
+      JSON.stringify({ rows: validatedRows, fileNames, sessionId })
+    );
+    router.push("/dashboard");
+  };
 
   /** FileUploader가 검증 통과 시 호출 — 아직 DB 저장 전 */
   const handleValidated = (rows: ParsedRow[], names: string[]) => {
     setValidatedRows(rows);
     setFileNames(names);
     setState("idle");
+    setErrorMessage(null);
   };
 
   /** "저장 후 대시보드 이동" 클릭 시 API 호출 */
   const handleSave = async () => {
     if (!validatedRows || validatedRows.length === 0) return;
     setState("saving");
+    setErrorMessage(null);
 
     try {
       const res = await fetch("/api/upload", {
@@ -42,24 +54,22 @@ export default function HomePage() {
         body: JSON.stringify({ rows: validatedRows, fileNames }),
       });
 
+      const data = await res.json().catch(() => ({}));
+
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error ?? "저장 실패");
+        throw new Error(
+          typeof data.error === "string" ? data.error : "저장 실패"
+        );
       }
 
-      const { sessionId } = await res.json();
       setState("done");
-
-      // 대시보드는 URL 파라미터 대신 sessionStorage로 데이터 전달
-      // (새로고침 시 데이터 유지, 탭 닫으면 사라짐)
-      sessionStorage.setItem(
-        "dashboardData",
-        JSON.stringify({ rows: validatedRows, fileNames, sessionId })
-      );
-      router.push("/dashboard");
+      goToDashboard(data.sessionId);
     } catch (err) {
       console.error(err);
       setState("error");
+      setErrorMessage(
+        err instanceof Error ? err.message : "저장 중 오류가 발생했습니다."
+      );
     }
   };
 
@@ -120,7 +130,21 @@ export default function HomePage() {
               </button>
             </div>
             {state === "error" && (
-              <p className="mt-2 text-sm text-red-600">저장 중 오류가 발생했습니다. 다시 시도해주세요.</p>
+              <div className="mt-3 space-y-2">
+                <p className="text-sm text-red-600">
+                  {errorMessage ?? "저장 중 오류가 발생했습니다."}
+                </p>
+                <p className="text-xs text-gray-500">
+                  Vercel에 Supabase 환경변수가 없으면 서버 저장이 실패합니다. 아래 버튼으로 대시보드는 바로 볼 수 있습니다.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => goToDashboard()}
+                  className="text-sm font-medium text-blue-600 hover:text-blue-700"
+                >
+                  저장 없이 대시보드 보기 →
+                </button>
+              </div>
             )}
           </div>
         )}

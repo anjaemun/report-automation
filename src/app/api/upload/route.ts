@@ -61,6 +61,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ sessionId: session.id, rowCount: records.length });
   } catch (err) {
     console.error("Upload route error:", err);
-    return NextResponse.json({ error: "서버 오류" }, { status: 500 });
+    const message =
+      err instanceof Error ? err.message : "서버 오류";
+    const isConfigError = message.includes("NEXT_PUBLIC_SUPABASE");
+    return NextResponse.json(
+      {
+        error: isConfigError
+          ? "Supabase 환경변수가 설정되지 않았습니다"
+          : message,
+      },
+      { status: 500 }
+    );
   }
 }
