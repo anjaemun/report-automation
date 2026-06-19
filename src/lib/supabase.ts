@@ -12,13 +12,22 @@
  *  - NEXT_PUBLIC_SUPABASE_ANON_KEY
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+let supabaseClient: SupabaseClient | null = null;
 
-/** 앱 전역에서 import해서 쓰는 Supabase 클라이언트 */
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+/** 요청 시점에 초기화 — 빌드 시 env 없어도 실패하지 않음 */
+export function getSupabase(): SupabaseClient {
+  if (!supabaseClient) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !key) {
+      throw new Error("NEXT_PUBLIC_SUPABASE_URL 및 NEXT_PUBLIC_SUPABASE_ANON_KEY가 필요합니다.");
+    }
+    supabaseClient = createClient(url, key);
+  }
+  return supabaseClient;
+}
 
 /** sales_records 테이블 1행 */
 export type SalesRecord = {

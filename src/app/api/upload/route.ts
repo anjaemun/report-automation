@@ -15,12 +15,13 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 import { toSalesRecords } from "@/lib/excelParser";
 import { ParsedRow } from "@/lib/excelParser";
 
 export async function POST(req: NextRequest) {
   try {
+    const supabase = getSupabase();
     const body = await req.json();
     const { rows, fileNames }: { rows: ParsedRow[]; fileNames: string[] } = body;
 
