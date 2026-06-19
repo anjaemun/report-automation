@@ -16,7 +16,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ParsedRow } from "@/lib/excelParser";
 import { analyze, AnalysisResult } from "@/lib/analyzer";
-import { SalesRecord } from "@/lib/supabase";
+import { SalesRecord } from "@/lib/database";
 import KpiCards from "@/components/Kpicards";
 import SalesLineChart from "@/components/salesLineChart";
 import ProductBarChart from "@/components/productBarChart";

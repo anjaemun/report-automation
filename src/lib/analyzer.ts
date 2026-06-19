@@ -10,7 +10,7 @@
  *  - fileKpis는 업로드된 파일별로 전체 기간 합산
  */
 
-import { SalesRecord } from "./supabase";
+import { SalesRecord } from "./database";
 import { format, getWeek, startOfWeek, endOfWeek, parseISO } from "date-fns";
 import { ko } from "date-fns/locale";
 

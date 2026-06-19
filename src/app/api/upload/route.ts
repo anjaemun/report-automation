@@ -19,6 +19,8 @@ import { getSupabase } from "@/lib/supabase";
 import { toSalesRecords } from "@/lib/excelParser";
 import { ParsedRow } from "@/lib/excelParser";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(req: NextRequest) {
   try {
     const supabase = getSupabase();

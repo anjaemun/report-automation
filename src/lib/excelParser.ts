@@ -13,7 +13,7 @@
  */
 
 import * as XLSX from "xlsx";
-import { SalesRecord } from "./supabase";
+import { SalesRecord } from "./database";
 
 /** 파서가 만든 "한 줄" 데이터. validator·analyzer가 이 형태를 사용합니다. */
 export type ParsedRow = {
